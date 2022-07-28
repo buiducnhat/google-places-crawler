@@ -13,10 +13,15 @@ blockResourcesPlugin.blockedTypes.add('media');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function scrollPage(page, scrollContainer) {
+async function scrollPage(page) {
+  const scrollContainer = '.m6QErb[aria-label]';
   let lastHeight = await page.evaluate(
-    `document.querySelector("${scrollContainer}").scrollHeight`
+    `document.querySelector("${scrollContainer}")?.scrollHeight`
   );
+  if (!lastHeight) {
+    return false;
+  }
+
   while (true) {
     await page.evaluate(
       `document.querySelector("${scrollContainer}").scrollTo(0, document.querySelector("${scrollContainer}").scrollHeight)`
@@ -30,6 +35,8 @@ async function scrollPage(page, scrollContainer) {
     }
     lastHeight = newHeight;
   }
+
+  return true;
 }
 
 async function extractIds(page) {
@@ -48,18 +55,10 @@ async function extractIds(page) {
   return dataFromPage;
 }
 
-async function crawlUrls(query) {
+async function crawlUrls({ query, page }) {
   const baseCoordinates = JSON.parse(
     await fs.readFile('./const-data/base-coordinates.json', 'utf8')
   );
-
-  // Start browser, open page
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
-  const page = await browser.newPage();
-  await page.setDefaultNavigationTimeout(60000);
 
   const resultIds = new Set();
 
@@ -69,17 +68,18 @@ async function crawlUrls(query) {
       { waitUntil: 'domcontentloaded' }
     );
     await page.waitForNavigation();
-
-    const scrollContainer = '.m6QErb[aria-label]';
     await page.waitForTimeout(2000);
 
-    await scrollPage(page, scrollContainer);
-    await page.waitForTimeout(2000);
+    const hasResult = await scrollPage(page);
+    if (!hasResult) {
+      continue;
+    }
+    await page.waitForTimeout(500);
 
     const extractedIds = await extractIds(page);
     extractedIds.forEach((id) => resultIds.add(id));
 
-    await page.waitForTimeout(1000);
+    // await page.waitForTimeout(1000);
     console.log('Crawled urls:', resultIds.size);
   }
   const resultUrls = Array.from(resultIds).map(
@@ -94,21 +94,14 @@ async function crawlUrls(query) {
   });
 }
 
-async function crawlDetails(query) {
-  const urlPattern = /!1s(?<id>[^!]+).+!3d(?<lat>[^!]+)!4d(?<lon>[^!]+)/gm;
-  const result = [];
-
+async function crawlDetails({ query, page }) {
+  blockResourcesPlugin.blockedTypes.delete('image');
   const urls = JSON.parse(
     await fs.readFile(`./data/${query}-urls.json`, { encoding: 'utf8' })
   );
+  const urlPattern = /!1s(?<id>[^!]+).+!3d(?<lat>[^!]+)!4d(?<lon>[^!]+)/gm;
+  const result = [];
 
-  blockResourcesPlugin.blockedTypes.delete('image');
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
-
-  const page = await browser.newPage();
   for (const url of urls) {
     await page.goto(url);
 
@@ -187,18 +180,26 @@ async function crawlDetails(query) {
 async function main() {
   const argv = minimist(process.argv.slice(2));
 
-  const { query, action } = argv;
+  const { query, action, headless = true } = argv;
 
   console.info('Action:', action);
   console.log('Query:', query);
   console.info('Start time:', new Date().toLocaleString());
 
+  // Start browser, open page
+  const browser = await puppeteer.launch({
+    headless: headless === 'true',
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+  const page = await browser.newPage();
+  await page.setDefaultNavigationTimeout(60000);
+
   switch (action) {
     case 'crawl-urls':
-      await crawlUrls(query);
+      await crawlUrls({ query, page });
       break;
     case 'crawl-details':
-      await crawlDetails(query);
+      await crawlDetails({ query, page });
       break;
     default:
       console.error('Invalid action');
