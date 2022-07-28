@@ -79,6 +79,7 @@ async function crawlUrls(query) {
     extractedIds.forEach((id) => resultIds.add(id))
 
     await page.waitForTimeout(1000)
+    console.log('Crawled urls:', resultIds.size)
   }
   const resultUrls = Array.from(resultIds).map(
     (id) =>
@@ -90,8 +91,6 @@ async function crawlUrls(query) {
   await fs.writeFile(`./data/${query}-urls.json`, JSON.stringify(resultUrls), {
     encoding: 'utf-8',
   })
-
-  console.info('Crawled urls:', resultUrls.length)
 }
 
 async function crawlDetails(query) {
@@ -175,14 +174,13 @@ async function crawlDetails(query) {
     })
 
     result.push({ ...data, lat, lon, placeUrl: url })
+    console.log('Crawled details:', result.length)
   }
   await browser.close()
 
   await fs.writeFile(`./data/${query}-results.json`, JSON.stringify(result), {
     encoding: 'utf8',
   })
-
-  console.info('Crawled details:', result.length)
 }
 
 async function main() {
