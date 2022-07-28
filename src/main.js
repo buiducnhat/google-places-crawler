@@ -180,7 +180,7 @@ async function crawlDetails({ query, page }) {
 async function main() {
   const argv = minimist(process.argv.slice(2));
 
-  const { query, action, headless = true } = argv;
+  const { query, action, headless } = argv;
 
   console.info('Action:', action);
   console.log('Query:', query);
@@ -188,7 +188,7 @@ async function main() {
 
   // Start browser, open page
   const browser = await puppeteer.launch({
-    headless: headless === 'true',
+    headless: headless !== 'false',
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   const page = await browser.newPage();
