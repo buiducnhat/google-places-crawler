@@ -72,6 +72,7 @@ async function crawlUrls({ query, page }) {
 
     const hasResult = await scrollPage(page);
     if (!hasResult) {
+      console.log(`Time ${i + 1}: Crawled urls:`, resultIds.size);
       continue;
     }
     await page.waitForTimeout(500);
@@ -79,8 +80,7 @@ async function crawlUrls({ query, page }) {
     const extractedIds = await extractIds(page);
     extractedIds.forEach((id) => resultIds.add(id));
 
-    // await page.waitForTimeout(1000);
-    console.log('Crawled urls:', resultIds.size);
+    console.log(`Time ${i + 1}: Crawled urls:`, resultIds.size);
   }
   const resultUrls = Array.from(resultIds).map(
     (id) =>
