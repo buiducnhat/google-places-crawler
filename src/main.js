@@ -8,8 +8,6 @@ const { isInVietnam } = require('./polygon');
 
 puppeteer.use(StealthPlugin());
 puppeteer.use(blockResourcesPlugin);
-blockResourcesPlugin.blockedTypes.add('image');
-blockResourcesPlugin.blockedTypes.add('media');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -56,10 +54,12 @@ async function extractIds(page) {
 }
 
 async function crawlUrls({ query, page }) {
+  blockResourcesPlugin.blockedTypes.add('image');
+  blockResourcesPlugin.blockedTypes.add('media');
+
   const baseCoordinates = JSON.parse(
     await fs.readFile('./const-data/base-coordinates.json', 'utf8')
-  );
-
+  ).slice(0,1);
   const resultIds = new Set();
 
   for (let i = 0; i < baseCoordinates.length; i++) {
@@ -86,8 +86,6 @@ async function crawlUrls({ query, page }) {
     (id) =>
       `https://www.google.com/maps/search/?api=1&query=${query}&query_place_id=${id}`
   );
-
-  await browser.close();
 
   await fs.writeFile(`./data/${query}-urls.json`, JSON.stringify(resultUrls), {
     encoding: 'utf-8',
@@ -152,7 +150,6 @@ async function crawlDetails({ query, page }) {
       const rateItems = document.querySelectorAll('.F7nice');
       let rate = rateItems[0]?.innerText.replace(',', '.'),
         rateCount = rateItems[1]?.innerText.match(/\d+/);
-
       rate = rate ? parseFloat(rate) : 0;
       rateCount = rateCount ? parseInt(rateCount[0]) : 0;
 
@@ -170,11 +167,97 @@ async function crawlDetails({ query, page }) {
     result.push({ ...data, lat, lon, placeUrl: url });
     console.log('Crawled details:', result.length);
   }
-  await browser.close();
 
   await fs.writeFile(`./data/${query}-results.json`, JSON.stringify(result), {
     encoding: 'utf8',
   });
+}
+
+const convertToPlaceUrl = ({ query, placeId }) =>
+  `https://www.google.com/maps/search/?api=1&query=${query}query_place_id=${placeId}`;
+
+async function crawlDirect({ query, page }) {
+  blockResourcesPlugin.blockedTypes.delete('image');
+  const baseCoordinates = JSON.parse(
+    await fs.readFile('./const-data/base-coordinates.json', 'utf8')
+  );
+  const lastResults = [];
+
+  for (let i = 0; i < baseCoordinates.length; i++) {
+    await page.goto(
+      `https://google.com/maps/search/${query}/${baseCoordinates[i]}?hl=vi`,
+      { waitUntil: 'domcontentloaded' }
+    );
+
+    await page.waitForNavigation();
+    await page.waitForTimeout(2000);
+    const hasData = await scrollPage(page);
+    if (!hasData) {
+      continue;
+    }
+
+    const oneUrlResult = await page.evaluate(async () => {
+      const urlPattern = /!1s(?<id>[^!]+).+!3d(?<lat>[^!]+)!4d(?<lon>[^!]+)/gm;
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const results = [];
+
+      const items = Array.from(document.querySelectorAll('.hfpxzc'));
+      console.log(items);
+
+      for (let i = 0; i < items.length; i++) {
+        const el = items[i];
+
+        const placeUrl = el?.getAttribute('href');
+        const lat = [...placeUrl.matchAll(urlPattern)].map(
+          ({ groups }) => groups.lat
+        )[0];
+        const lon = [...placeUrl.matchAll(urlPattern)].map(
+          ({ groups }) => groups.lon
+        )[0];
+
+        await sleep(2000);
+        el.click();
+        await sleep(2000);
+
+        const detailTexts = document.querySelectorAll('.Io6YTe');
+        const detailIcons = document.querySelectorAll('.Liguzb');
+        let address, phone, website;
+
+        for (let j = 0; j < detailTexts.length; j++) {
+          if (detailIcons[j].src.includes('place_gm_blue_24dp')) {
+            address = detailTexts[j].innerText;
+          }
+          if (detailIcons[j].src.includes('phone_gm_blue_24dp')) {
+            phone = detailTexts[j].innerText.replace(/\s/gm, '');
+          }
+          if (detailIcons[j].src.includes('public_gm_blue_24dp')) {
+            website = detailTexts[j].innerText;
+          }
+        }
+        const imgUrl = document.querySelector('.aoRNLd')?.firstChild?.src || '';
+        const rateItems = document.querySelectorAll('.F7nice');
+        let rate = rateItems[0]?.innerText.replace(',', '.'),
+          rateCount = rateItems[1]?.innerText.match(/\d+/);
+        rate = rate ? parseFloat(rate) : 0;
+        rateCount = rateCount ? parseInt(rateCount[0]) : 0;
+
+        results.push({
+          title: document.querySelector('h1.DUwDvf')?.innerText || '',
+          imgUrl,
+          address,
+          phone,
+          website,
+          lat,
+          lon,
+          placeUrl,
+        });
+      }
+      return results;
+    });
+    console.log(oneUrlResult);
+
+    lastResults.push(...oneUrlResult);
+  }
 }
 
 async function main() {
@@ -201,11 +284,15 @@ async function main() {
     case 'crawl-details':
       await crawlDetails({ query, page });
       break;
+    case 'crawl-direct':
+      await crawlDirect({ query, page });
+      break;
     default:
       console.error('Invalid action');
       break;
   }
 
+  await browser.close();
   console.info('End time:', new Date().toLocaleString());
 }
 
