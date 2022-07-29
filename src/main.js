@@ -59,7 +59,7 @@ async function crawlUrls({ query, page }) {
 
   const baseCoordinates = JSON.parse(
     await fs.readFile('./const-data/base-coordinates.json', 'utf8')
-  ).slice(0,1);
+  );
   const resultIds = new Set();
 
   for (let i = 0; i < baseCoordinates.length; i++) {
