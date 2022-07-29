@@ -101,7 +101,7 @@ async function crawlDetails({ query, page }) {
   const result = [];
 
   for (const url of urls) {
-    await page.goto(url);
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
 
     while (1) {
       await sleep(1000);
@@ -275,7 +275,7 @@ async function main() {
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   const page = await browser.newPage();
-  await page.setDefaultNavigationTimeout(60000);
+  await page.setDefaultNavigationTimeout(0);
 
   switch (action) {
     case 'crawl-urls':
