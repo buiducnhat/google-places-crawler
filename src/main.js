@@ -65,7 +65,7 @@ async function crawlUrls({ query, page }) {
   for (let i = 0; i < baseCoordinates.length; i++) {
     await page.goto(
       `https://google.com/maps/search/${query}/${baseCoordinates[i]}?hl=vi`,
-      { waitUntil: 'domcontentloaded' }
+      { waitUntil: 'networkidle2' }
     );
     await page.waitForNavigation();
     await page.waitForTimeout(2000);
@@ -101,7 +101,7 @@ async function crawlDetails({ query, page }) {
   const result = [];
 
   for (const url of urls) {
-    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.goto(url, { waitUntil: 'networkidle2' });
 
     while (1) {
       await sleep(1000);
@@ -275,7 +275,7 @@ async function main() {
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   const page = await browser.newPage();
-  await page.setDefaultNavigationTimeout(0);
+  // await page.setDefaultNavigationTimeout(0);
 
   switch (action) {
     case 'crawl-urls':
