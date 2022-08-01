@@ -99,73 +99,94 @@ async function crawlDetails({ query, page }) {
   );
   const urlPattern = /!1s(?<id>[^!]+).+!3d(?<lat>[^!]+)!4d(?<lon>[^!]+)/gm;
   const result = [];
+  let hasError = false;
 
-  for (const url of urls) {
-    await page.goto(url, { waitUntil: 'networkidle2' });
-
-    while (1) {
-      await sleep(1000);
-      const curUrl = await page.url();
-      if (
-        curUrl?.match(/!1s([\d\w:]+).+!3d([\d\.]+)!4d([\d\.]+)/gm)?.length > 0
-      ) {
-        break;
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i];
+    try {
+      if (!hasError) {
+        await page.goto(url, {
+          waitUntil: ['networkidle0', 'domcontentloaded'],
+        });
+      } else {
+        await page.reload({ waitUntil: ['networkidle0', 'domcontentloaded'] });
       }
-    }
 
-    const curUrl = await page.url();
-    let match = urlPattern.exec(curUrl);
-    if (!match) {
-      match = urlPattern.exec(curUrl);
-    }
+      let count = 0;
+      while (true) {
+        await sleep(1000);
+        count++;
+        const curUrl = await page.url();
+        if (
+          curUrl?.match(/!1s([\d\w:]+).+!3d([\d\.]+)!4d([\d\.]+)/gm)?.length > 0
+        ) {
+          break;
+        }
+        // Timeout for 20s
+        if (count > 20) {
+          throw new Error();
+        }
+      }
 
-    const lat = match?.groups.lat ? parseFloat(match?.groups.lat) : null;
-    const lon = match?.groups.lon ? parseFloat(match?.groups.lon) : null;
+      const curUrl = await page.url();
+      let match = urlPattern.exec(curUrl);
+      if (!match) {
+        match = urlPattern.exec(curUrl);
+      }
 
-    if (!isInVietnam({ lat, lon })) {
+      const lat = match?.groups.lat ? parseFloat(match?.groups.lat) : null;
+      const lon = match?.groups.lon ? parseFloat(match?.groups.lon) : null;
+
+      if (!isInVietnam({ lat, lon })) {
+        continue;
+      }
+
+      const data = await page.evaluate(() => {
+        const title = document.querySelector('.DUwDvf')?.children[0]?.innerText;
+        const imgUrl =
+          document.querySelector('.FgCUCc')?.children[0]?.firstChild?.src || '';
+
+        const detailTexts = document.querySelectorAll('.Io6YTe');
+        const detailIcons = document.querySelectorAll('.Liguzb');
+        let address, phone, website;
+
+        for (let j = 0; j < detailTexts.length; j++) {
+          if (detailIcons[j].src.includes('place_gm_blue_24dp')) {
+            address = detailTexts[j].innerText;
+          }
+          if (detailIcons[j].src.includes('phone_gm_blue_24dp')) {
+            phone = detailTexts[j].innerText.replace(/\s/gm, '');
+          }
+          if (detailIcons[j].src.includes('public_gm_blue_24dp')) {
+            website = detailTexts[j].innerText;
+          }
+        }
+
+        const rateItems = document.querySelectorAll('.F7nice');
+        let rate = rateItems[0]?.innerText.replace(',', '.'),
+          rateCount = rateItems[1]?.innerText.match(/\d+/);
+        rate = rate ? parseFloat(rate) : 0;
+        rateCount = rateCount ? parseInt(rateCount[0]) : 0;
+
+        return {
+          title,
+          imgUrl,
+          address,
+          phone,
+          website,
+          rate,
+          rateCount,
+        };
+      });
+
+      result.push({ ...data, lat, lon, placeUrl: url });
+      console.log('Crawled details:', result.length);
+      hasError = false;
+    } catch (error) {
+      i--;
+      hasError = true;
       continue;
     }
-
-    const data = await page.evaluate(() => {
-      const title = document.querySelector('.DUwDvf')?.children[0]?.innerText;
-      const imgUrl =
-        document.querySelector('.FgCUCc')?.children[0]?.firstChild?.src || '';
-
-      const detailTexts = document.querySelectorAll('.Io6YTe');
-      const detailIcons = document.querySelectorAll('.Liguzb');
-      let address, phone, website;
-
-      for (let j = 0; j < detailTexts.length; j++) {
-        if (detailIcons[j].src.includes('place_gm_blue_24dp')) {
-          address = detailTexts[j].innerText;
-        }
-        if (detailIcons[j].src.includes('phone_gm_blue_24dp')) {
-          phone = detailTexts[j].innerText.replace(/\s/gm, '');
-        }
-        if (detailIcons[j].src.includes('public_gm_blue_24dp')) {
-          website = detailTexts[j].innerText;
-        }
-      }
-
-      const rateItems = document.querySelectorAll('.F7nice');
-      let rate = rateItems[0]?.innerText.replace(',', '.'),
-        rateCount = rateItems[1]?.innerText.match(/\d+/);
-      rate = rate ? parseFloat(rate) : 0;
-      rateCount = rateCount ? parseInt(rateCount[0]) : 0;
-
-      return {
-        title,
-        imgUrl,
-        address,
-        phone,
-        website,
-        rate,
-        rateCount,
-      };
-    });
-
-    result.push({ ...data, lat, lon, placeUrl: url });
-    console.log('Crawled details:', result.length);
   }
 
   await fs.writeFile(`./data/${query}-results.json`, JSON.stringify(result), {
