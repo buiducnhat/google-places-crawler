@@ -275,7 +275,7 @@ async function main() {
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   const page = await browser.newPage();
-  // await page.setDefaultNavigationTimeout(0);
+  await page.setDefaultNavigationTimeout(120000);
 
   switch (action) {
     case 'crawl-urls':
