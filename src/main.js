@@ -5,6 +5,7 @@ const blockResourcesPlugin =
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const fs = require('fs/promises');
 const { isInVietnam } = require('./polygon');
+const config = require('./config');
 
 puppeteer.use(StealthPlugin());
 puppeteer.use(blockResourcesPlugin);
@@ -103,7 +104,7 @@ async function crawlDetails({ query, page }) {
   let retry = 0;
 
   for (let i = 0; i < urls.length; i++) {
-    const url = urls[i];
+    const url = urls[i] + `&hl=${config.lang}`;
     try {
       if (!hasError) {
         await page.goto(url, {
@@ -155,7 +156,11 @@ async function crawlDetails({ query, page }) {
 
         const detailTexts = document.querySelectorAll('.Io6YTe');
         const detailIcons = document.querySelectorAll('.Liguzb');
-        let address, phone, website;
+
+        let address = null,
+          phone = null,
+          website = null,
+          openHours = null;
 
         for (let j = 0; j < detailTexts.length; j++) {
           if (detailIcons[j].src.includes('place_gm_blue_24dp')) {
@@ -167,6 +172,16 @@ async function crawlDetails({ query, page }) {
           if (detailIcons[j].src.includes('public_gm_blue_24dp')) {
             website = detailTexts[j].innerText;
           }
+        }
+        const openHoursIcon = document.querySelector('.OdW2qd');
+        if (
+          !!openHoursIcon &&
+          openHoursIcon.src.includes('schedule_gm_blue_24dp')
+        ) {
+          openHoursIcon.parentElement.click();
+          openHours = document
+            .querySelector('.t39EBf')
+            .getAttribute('aria-label');
         }
 
         const rateItems = document.querySelectorAll('.F7nice');
@@ -181,12 +196,13 @@ async function crawlDetails({ query, page }) {
           address,
           phone,
           website,
+          openHours,
           rate,
           rateCount,
         };
       });
 
-      result.push({ ...data, lat, lon, placeUrl: url });
+      result.push({ ...data, lat, lon, placeUrl: urls[i] });
       console.log('Crawled details:', result.length);
       hasError = false;
       retry = 0;
