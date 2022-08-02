@@ -100,6 +100,7 @@ async function crawlDetails({ query, page }) {
   const urlPattern = /!1s(?<id>[^!]+).+!3d(?<lat>[^!]+)!4d(?<lon>[^!]+)/gm;
   const result = [];
   let hasError = false;
+  let retry = 0;
 
   for (let i = 0; i < urls.length; i++) {
     const url = urls[i];
@@ -109,6 +110,12 @@ async function crawlDetails({ query, page }) {
           waitUntil: ['networkidle0', 'domcontentloaded'],
         });
       } else {
+        retry++;
+        if (retry > 3) {
+          retry = 0;
+          hasError = false;
+          continue;
+        }
         await page.reload({ waitUntil: ['networkidle0', 'domcontentloaded'] });
       }
 
@@ -122,8 +129,8 @@ async function crawlDetails({ query, page }) {
         ) {
           break;
         }
-        // Timeout for 20s
-        if (count > 20) {
+        // Timeout for 10s
+        if (count > 10) {
           throw new Error();
         }
       }
@@ -182,6 +189,7 @@ async function crawlDetails({ query, page }) {
       result.push({ ...data, lat, lon, placeUrl: url });
       console.log('Crawled details:', result.length);
       hasError = false;
+      retry = 0;
     } catch (error) {
       i--;
       hasError = true;
