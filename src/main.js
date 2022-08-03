@@ -211,6 +211,7 @@ async function handleDetailOnePart({ query, page, urls, index }) {
     }
   }
 
+  await fs.rmdir(`./data/${query}-results`, { recursive: true });
   await fs.writeFile(
     `./data/${query}-results/${index}.json`,
     JSON.stringify(result),
