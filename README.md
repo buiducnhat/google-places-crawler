@@ -38,6 +38,12 @@ You must pass 2 arguments:
 2. `query`: for searching in `Google maps`
    - Example: hotel, drink, cà phê, sửa ô tô
 
+3. `size`: for multiple pages (tabs) of browser, quickly crawl data but cost more memory
+   - Example: 10
+
+4. `headless`: for debug, unhide the browser, recommended true
+   - Example: true
+
 ### Command for start
 
 ```
