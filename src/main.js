@@ -211,7 +211,6 @@ async function handleDetailOnePart({ query, page, urls, index }) {
     }
   }
 
-  await fs.rmdir(`./data/${query}-results`, { recursive: true });
   await fs.writeFile(
     `./data/${query}-results/${index}.json`,
     JSON.stringify(result),
@@ -263,6 +262,7 @@ async function crawlDetails({ query, browser, size = 10 }) {
     results.push(...data);
   }
 
+  await fs.rm(`./data/${query}-results.json`, { recursive: true });
   await fs.writeFile(`./data/${query}-results.json`, JSON.stringify(results), {
     encoding: 'utf8',
   });
