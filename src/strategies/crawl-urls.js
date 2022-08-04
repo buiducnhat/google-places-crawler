@@ -115,6 +115,7 @@ async function crawlUrls({ query, browser, size }) {
   await fs.writeFile(`./data/urls/${query}.json`, JSON.stringify(resultUrls), {
     encoding: 'utf-8',
   });
+  console.log('Done! crawled URLS:', resultUrls.length);
 }
 
 module.exports = crawlUrls;
