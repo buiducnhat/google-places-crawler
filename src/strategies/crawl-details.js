@@ -6,7 +6,7 @@ const { sleep } = require('../helpers');
 
 async function handleDetailOnePart({ query, page, urls, index }) {
   const urlPattern = /!1s(?<id>[^!]+).+!3d(?<lat>[^!]+)!4d(?<lon>[^!]+)/gm;
-  const result = [];
+
   let hasError = false,
     retry = 0;
 
@@ -19,6 +19,7 @@ async function handleDetailOnePart({ query, page, urls, index }) {
   }
 
   for (let i = 0; i < size; i++) {
+    const result = [];
     for (let j = 0; j < subUrls[i].length; j++) {
       const url = subUrls[i][j] + `&hl=${config.lang}`;
       try {
