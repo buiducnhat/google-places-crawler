@@ -55,8 +55,8 @@ async function handleOnePart({ query, coordinates, page, index }) {
         `https://google.com/maps/search/${query}/${coordinates[i]}?hl=vi`,
         { waitUntil: 'networkidle2' }
       );
-      await page.waitForNavigation();
-      await page.waitForTimeout(2000);
+      await page.waitForSelector('.m6QErb');
+      await page.waitForTimeout(500);
 
       const hasResult = await scrollPage(page);
       if (!hasResult) {
