@@ -36,8 +36,6 @@ async function main() {
       await crawlUrls({ query, page });
       break;
     case 'crawl-details':
-      blockResourcesPlugin.blockedTypes.delete('image');
-      await page.close();
       await crawlDetails({ query, browser, size });
       break;
     default:
