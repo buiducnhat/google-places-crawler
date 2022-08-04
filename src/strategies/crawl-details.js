@@ -131,7 +131,7 @@ async function handleDetailOnePart({ query, page, urls, index }) {
   );
 }
 
-async function crawlDetails({ query, browser, size = 10 }) {
+async function crawlDetails({ query, browser, size }) {
   // check dir exists before create
   fs.access(`./data/tmp/${query}-results`)
     .then(() => {})

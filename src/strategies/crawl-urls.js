@@ -42,32 +42,71 @@ async function extractIds(page) {
   return dataFromPage;
 }
 
-async function crawlUrls({ query, page }) {
+async function handleOnePart({ query, coordinates, page, index }) {
+  const resultIds = new Set();
+  let retry = 0;
+  for (let i = 0; i < coordinates.length; i++) {
+    try {
+      if (retry > 3) {
+        retry = 0;
+        continue;
+      }
+      await page.goto(
+        `https://google.com/maps/search/${query}/${coordinates[i]}?hl=vi`,
+        { waitUntil: 'networkidle2' }
+      );
+      await page.waitForSelector('.m6QErb');
+      await page.waitForTimeout(500);
+
+      const hasResult = await scrollPage(page);
+      if (!hasResult) {
+        console.log(`Time ${i + 1}: Crawled urls:`, resultIds.size);
+        continue;
+      }
+      await page.waitForTimeout(500);
+
+      const extractedIds = await extractIds(page);
+      extractedIds.forEach((id) => resultIds.add(id));
+
+      console.log(`${index}: Time ${i + 1}: Crawled urls:`, resultIds.size);
+      retry = 0;
+    } catch (error) {
+      i--;
+      retry++;
+      continue;
+    }
+  }
+
+  return resultIds;
+}
+
+async function crawlUrls({ query, browser, size }) {
   const baseCoordinates = JSON.parse(
     await fs.readFile('./const-data/base-coordinates.json', 'utf8')
   );
-  const resultIds = new Set();
-
-  for (let i = 0; i < baseCoordinates.length; i++) {
-    await page.goto(
-      `https://google.com/maps/search/${query}/${baseCoordinates[i]}?hl=vi`,
-      { waitUntil: 'networkidle2' }
-    );
-    await page.waitForNavigation();
-    await page.waitForTimeout(2000);
-
-    const hasResult = await scrollPage(page);
-    if (!hasResult) {
-      console.log(`Time ${i + 1}: Crawled urls:`, resultIds.size);
-      continue;
-    }
-    await page.waitForTimeout(500);
-
-    const extractedIds = await extractIds(page);
-    extractedIds.forEach((id) => resultIds.add(id));
-
-    console.log(`Time ${i + 1}: Crawled urls:`, resultIds.size);
+  const subCoordinates = [];
+  const pages = [];
+  const l = Math.ceil(baseCoordinates.length / size);
+  for (let i = 0; i < size; i++) {
+    subCoordinates.push(baseCoordinates.slice(i * l, (i + 1) * l));
+    pages.push(await browser.newPage());
   }
+
+  const resultFromParts = await Promise.all(
+    subCoordinates.map((_, index) =>
+      handleOnePart({
+        query,
+        coordinates: _,
+        page: pages[index],
+        index,
+      })
+    )
+  );
+  const resultIds = new Set();
+  resultFromParts.forEach((result) => {
+    result.forEach((id) => resultIds.add(id));
+  });
+
   const resultUrls = Array.from(resultIds).map(
     (id) =>
       `https://www.google.com/maps/search/?api=1&query=${query}&query_place_id=${id}`
