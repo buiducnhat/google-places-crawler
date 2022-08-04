@@ -42,15 +42,11 @@ async function extractIds(page) {
   return dataFromPage;
 }
 
-async function crawlUrls({ query, page }) {
-  const baseCoordinates = JSON.parse(
-    await fs.readFile('./const-data/base-coordinates.json', 'utf8')
-  );
+async function handleOnePart({ query, coordinates, page, index }) {
   const resultIds = new Set();
-
-  for (let i = 0; i < baseCoordinates.length; i++) {
+  for (let i = 0; i < coordinates.length; i++) {
     await page.goto(
-      `https://google.com/maps/search/${query}/${baseCoordinates[i]}?hl=vi`,
+      `https://google.com/maps/search/${query}/${coordinates[i]}?hl=vi`,
       { waitUntil: 'networkidle2' }
     );
     await page.waitForNavigation();
@@ -66,8 +62,39 @@ async function crawlUrls({ query, page }) {
     const extractedIds = await extractIds(page);
     extractedIds.forEach((id) => resultIds.add(id));
 
-    console.log(`Time ${i + 1}: Crawled urls:`, resultIds.size);
+    console.log(`${index}: Time ${i + 1}: Crawled urls:`, resultIds.size);
   }
+
+  return resultIds;
+}
+
+async function crawlUrls({ query, browser, size }) {
+  const baseCoordinates = JSON.parse(
+    await fs.readFile('./const-data/base-coordinates.json', 'utf8')
+  );
+  const subCoordinates = [];
+  const pages = [];
+  const l = Math.ceil(baseCoordinates.length / size);
+  for (let i = 0; i < size; i++) {
+    subCoordinates.push(baseCoordinates.slice(i * l, (i + 1) * l));
+    pages.push(await browser.newPage());
+  }
+
+  const resultFromParts = await Promise.all(
+    subCoordinates.map((_, index) =>
+      handleOnePart({
+        query,
+        coordinates: _,
+        page: pages[index],
+        index,
+      })
+    )
+  );
+  const resultIds = new Set();
+  resultFromParts.forEach((result) => {
+    result.forEach((id) => resultIds.add(id));
+  });
+
   const resultUrls = Array.from(resultIds).map(
     (id) =>
       `https://www.google.com/maps/search/?api=1&query=${query}&query_place_id=${id}`

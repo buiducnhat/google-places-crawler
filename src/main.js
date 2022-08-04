@@ -33,7 +33,7 @@ async function main() {
     case 'crawl-urls':
       blockResourcesPlugin.blockedTypes.add('image');
       blockResourcesPlugin.blockedTypes.add('media');
-      await crawlUrls({ query, page });
+      await crawlUrls({ query, browser, size });
       break;
     case 'crawl-details':
       await crawlDetails({ query, browser, size });
