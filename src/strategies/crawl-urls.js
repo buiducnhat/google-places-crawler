@@ -44,25 +44,37 @@ async function extractIds(page) {
 
 async function handleOnePart({ query, coordinates, page, index }) {
   const resultIds = new Set();
+  let retry = 0;
   for (let i = 0; i < coordinates.length; i++) {
-    await page.goto(
-      `https://google.com/maps/search/${query}/${coordinates[i]}?hl=vi`,
-      { waitUntil: 'networkidle2' }
-    );
-    await page.waitForNavigation();
-    await page.waitForTimeout(2000);
+    try {
+      if (retry > 3) {
+        retry = 0;
+        continue;
+      }
+      await page.goto(
+        `https://google.com/maps/search/${query}/${coordinates[i]}?hl=vi`,
+        { waitUntil: 'networkidle2' }
+      );
+      await page.waitForNavigation();
+      await page.waitForTimeout(2000);
 
-    const hasResult = await scrollPage(page);
-    if (!hasResult) {
-      console.log(`Time ${i + 1}: Crawled urls:`, resultIds.size);
+      const hasResult = await scrollPage(page);
+      if (!hasResult) {
+        console.log(`Time ${i + 1}: Crawled urls:`, resultIds.size);
+        continue;
+      }
+      await page.waitForTimeout(500);
+
+      const extractedIds = await extractIds(page);
+      extractedIds.forEach((id) => resultIds.add(id));
+
+      console.log(`${index}: Time ${i + 1}: Crawled urls:`, resultIds.size);
+      retry = 0;
+    } catch (error) {
+      i--;
+      retry++;
       continue;
     }
-    await page.waitForTimeout(500);
-
-    const extractedIds = await extractIds(page);
-    extractedIds.forEach((id) => resultIds.add(id));
-
-    console.log(`${index}: Time ${i + 1}: Crawled urls:`, resultIds.size);
   }
 
   return resultIds;
