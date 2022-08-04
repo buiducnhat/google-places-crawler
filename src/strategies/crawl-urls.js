@@ -73,7 +73,7 @@ async function crawlUrls({ query, page }) {
       `https://www.google.com/maps/search/?api=1&query=${query}&query_place_id=${id}`
   );
 
-  await fs.writeFile(`./data/${query}-urls.json`, JSON.stringify(resultUrls), {
+  await fs.writeFile(`./data/urls/${query}.json`, JSON.stringify(resultUrls), {
     encoding: 'utf-8',
   });
 }

@@ -123,7 +123,7 @@ async function handleDetailOnePart({ query, page, urls, index }) {
   }
 
   await fs.writeFile(
-    `./data/${query}-results/${index}.json`,
+    `./data/tmp/${query}-results/${index}.json`,
     JSON.stringify(result),
     {
       encoding: 'utf8',
@@ -133,14 +133,15 @@ async function handleDetailOnePart({ query, page, urls, index }) {
 
 async function crawlDetails({ query, browser, size = 10 }) {
   // check dir exists before create
-  fs.access(`./data/${query}-results`)
+  fs.access(`./data/tmp/${query}-results`)
     .then(() => {})
     .catch(async () => {
-      await fs.mkdir(`./data/${query}-results`);
+      await fs.mkdir(`./data/tmp/${query}-results`);
     });
 
+  // read urls
   const totalUrls = JSON.parse(
-    await fs.readFile(`./data/${query}-urls.json`, { encoding: 'utf8' })
+    await fs.readFile(`./data/urls/${query}.json`, { encoding: 'utf8' })
   );
   const subUrls = [];
   const pages = [];
@@ -164,15 +165,15 @@ async function crawlDetails({ query, browser, size = 10 }) {
   const results = [];
   for (let i = 0; i < size; i++) {
     const data = JSON.parse(
-      await fs.readFile(`./data/${query}-results/${i}.json`, {
+      await fs.readFile(`./data/tmp/${query}-results/${i}.json`, {
         encoding: 'utf8',
       })
     );
     results.push(...data);
   }
 
-  await fs.rm(`./data/${query}-results`, { recursive: true });
-  await fs.writeFile(`./data/${query}-results.json`, JSON.stringify(results), {
+  await fs.rm(`./data/tmp/${query}-results`, { recursive: true });
+  await fs.writeFile(`./data/results/${query}.json`, JSON.stringify(results), {
     encoding: 'utf8',
   });
 
