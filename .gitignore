@@ -2,3 +2,4 @@
 /data
 .env
 /build
+.DS_Store
