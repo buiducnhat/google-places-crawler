@@ -8,7 +8,8 @@ async function handleDetailOnePart({ query, page, urls, index }) {
   const urlPattern = /!1s(?<id>[^!]+).+!3d(?<lat>[^!]+)!4d(?<lon>[^!]+)/gm;
 
   let hasError = false,
-    retry = 0;
+    retry = 0,
+    countRes = 0;
 
   // Each part divide into 10 files
   const subUrls = [],
@@ -126,7 +127,6 @@ async function handleDetailOnePart({ query, page, urls, index }) {
         });
 
         result.push({ ...data, lat, lon, placeUrl: subUrls[i][j] });
-        console.log(`${index} - Crawled details:`, result.length);
         hasError = false;
         retry = 0;
       } catch (error) {
@@ -143,7 +143,11 @@ async function handleDetailOnePart({ query, page, urls, index }) {
         encoding: 'utf8',
       }
     );
+
+    countRes += result.length;
   }
+
+  console.log(`${index} - Crawled details:`, countRes);
 }
 
 async function crawlDetails({ query, browser, size }) {
