@@ -34,9 +34,25 @@ async function main() {
       blockResourcesPlugin.blockedTypes.add('image');
       blockResourcesPlugin.blockedTypes.add('media');
       await crawlUrls({ query, browser, size });
+
+      await page.close();
       break;
     case 'crawl-details':
       await crawlDetails({ query, browser, size });
+
+      await page.close();
+      break;
+    case 'crawl-both':
+      blockResourcesPlugin.blockedTypes.add('image');
+      blockResourcesPlugin.blockedTypes.add('media');
+      await crawlUrls({ query, browser, size });
+
+      await page.close();
+
+      blockResourcesPlugin.blockedTypes.delete('image');
+      blockResourcesPlugin.blockedTypes.delete('media');
+      await crawlDetails({ query, browser, size });
+
       break;
     default:
       console.error('Invalid action');
@@ -44,6 +60,7 @@ async function main() {
   }
 
   await browser.close();
+
   console.info('End time:', new Date().toLocaleString());
 }
 

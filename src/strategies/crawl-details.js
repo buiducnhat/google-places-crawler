@@ -73,8 +73,7 @@ async function handleDetailOnePart({ query, page, urls, index }) {
         await page.waitForSelector('.aoRNLd>img');
         // await page.waitForTimeout(1000);
         const data = await page.evaluate(() => {
-          const title =
-            document.querySelector('.DUwDvf')?.children[0]?.innerText;
+          const title = document.querySelector('.DUwDvf')?.innerText;
           const imgUrl =
             document.querySelector('.aoRNLd')?.firstChild?.src || null;
 
@@ -108,11 +107,15 @@ async function handleDetailOnePart({ query, page, urls, index }) {
               .getAttribute('aria-label');
           }
 
-          const rateItems = document.querySelectorAll('.F7nice');
-          let rate = rateItems[0]?.innerText.replace(',', '.'),
-            rateCount = rateItems[1]?.innerText.match(/\d+/);
-          rate = rate ? parseFloat(rate) : 0;
-          rateCount = rateCount ? parseInt(rateCount[0]) : 0;
+          const rateItem = document.querySelector('.F7nice');
+          const rate =
+            Number.parseFloat(
+              rateItem.firstChild.firstChild.innerHTML.replace(',', '.')
+            ) || 0;
+          const rateCount =
+            Number.parseFloat(
+              rateItem.lastChild.innerText.replace(/\(|\)/gm, '')
+            ) || 0;
 
           return {
             title,
